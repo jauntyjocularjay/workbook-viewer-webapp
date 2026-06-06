@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manifest Viewer — Results</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 2rem; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        h1 { font-size: 1.4rem; color: #1a1a1a; }
+        h1 span { font-weight: normal; color: #6b7280; font-size: 1rem; margin-left: .5rem; }
+        a.back { text-decoration: none; background: #fff; border: 1px solid #d1d5db; color: #374151; padding: .5rem 1rem; border-radius: 6px; font-size: .875rem; transition: background .15s; }
+        a.back:hover { background: #f3f4f6; }
+        .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+        table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+        thead tr.headers { background: #1e40af; color: #fff; }
+        thead tr.headers th { padding: .75rem 1rem; text-align: left; white-space: nowrap; font-weight: 600; }
+        thead tr.filters { background: #1e3a8a; }
+        thead tr.filters th { padding: .35rem .5rem; }
+        thead tr.filters input {
+            width: 100%; padding: .3rem .5rem; border: 1px solid #3b5fc4; border-radius: 4px;
+            background: #1e40af; color: #fff; font-size: .8rem; outline: none;
+        }
+        thead tr.filters input::placeholder { color: #93c5fd; }
+        thead tr.filters input:focus { border-color: #93c5fd; background: #1d4ed8; }
+        tbody tr:nth-child(even) { background: #f8fafc; }
+        tbody tr:hover { background: #eff6ff; }
+        tbody td { padding: .65rem 1rem; border-bottom: 1px solid #e5e7eb; white-space: nowrap; color: #374151; }
+        tbody tr.hidden { display: none; }
+        .empty { text-align: center; color: #9ca3af; padding: 3rem; }
+        .meta { font-size: .8rem; color: #6b7280; margin-top: .75rem; }
+        .filter-bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        #row-count { font-size: .85rem; color: #6b7280; }
+        #clear-filters {
+            font-size: .8rem; padding: .3rem .75rem; border: 1px solid #d1d5db; border-radius: 5px;
+            background: #fff; color: #374151; cursor: pointer; display: none;
+        }
+        #clear-filters:hover { background: #f3f4f6; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div>
+        <h1>Manifest <span th:text="${filename}"></span></h1>
+        <p class="meta"
+           th:text="${data.rows().size()} + ' row(s) · ' + ${data.headers().size()} + ' column(s)'"></p>
+    </div>
+    <a class="back" href="/">Upload another file</a>
+</div>
+
+<div class="filter-bar">
+    <span id="row-count"></span>
+    <button id="clear-filters" onclick="clearFilters()">Clear filters</button>
+</div>
+
+<div class="table-wrap">
+    <table id="manifest-table">
+        <thead>
+            <tr class="headers">
+                <th th:each="header : ${data.headers()}" th:text="${header}"></th>
+            </tr>
+            <tr class="filters">
+                <th th:each="header : ${data.headers()}">
+                    <input type="text"
+                           th:placeholder="'Filter ' + ${header}"
+                           oninput="applyFilters()"
+                           autocomplete="off">
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:if="${data.rows().isEmpty()}">
+                <td class="empty" th:colspan="${data.headers().size()}">No data rows found.</td>
+            </tr>
+            <tr th:each="row : ${data.rows()}">
+                <td th:each="cell : ${row}" th:text="${cell}"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const totalRows = document.querySelectorAll('#manifest-table tbody tr:not(.empty)').length;
+
+    function applyFilters() {
+        const inputs = document.querySelectorAll('#manifest-table thead tr.filters input');
+        const terms = Array.from(inputs).map(i => i.value.trim().toLowerCase());
+        const anyActive = terms.some(t => t !== '');
+        let visible = 0;
+
+        document.querySelectorAll('#manifest-table tbody tr:not(.empty)').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const match = terms.every((term, i) =>
+                term === '' || (cells[i] && cells[i].textContent.toLowerCase().includes(term))
+            );
+            row.classList.toggle('hidden', !match);
+            if (match) visible++;
+        });
+
+        document.getElementById('row-count').textContent =
+            anyActive ? `Showing ${visible} of ${totalRows} row(s)` : `${totalRows} row(s)`;
+        document.getElementById('clear-filters').style.display = anyActive ? 'inline-block' : 'none';
+    }
+
+    function clearFilters() {
+        document.querySelectorAll('#manifest-table thead tr.filters input').forEach(i => i.value = '');
+        applyFilters();
+    }
+
+    applyFilters();
+</script>
+</body>
+</html>
